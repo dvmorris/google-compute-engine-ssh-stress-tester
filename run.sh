@@ -9,12 +9,23 @@ ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_test -q -N ""
 gcloud compute os-login ssh-keys add --key-file=$HOME/.ssh/id_rsa_test.pub
 
 # prepare test-results.csv file
-echo "test-name,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime" > test-results.csv
+echo "test-name,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime, delete-instances" > test-results.csv
+
+#Get command line args
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -t) TEST_CASE_FILE="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+echo "Test case file : $TEST_CASE_FILE"
 
 # loop over test-cases.csv
-exec < test-cases.csv
+exec < $TEST_CASE_FILE
 read header
-while IFS="," read -r TEST_NAME VPC_NETWORK NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS
+while IFS="," read -r TEST_NAME VPC_NETWORK NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS DELETE_INSTANCES
 do
     echo "Starting test-case $TEST_NAME"
 
@@ -81,7 +92,9 @@ systemctl restart sshd.service' \
     gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command "./tester.sh" < /dev/null >> test-results.csv
 
     # delete the client and server VMs for this test
-    gcloud compute instances delete $CLIENT_NAME $SERVER_NAME --zone=$ZONE --quiet
+   if [ $DELETE_INSTANCES = "TRUE" ] ; then
+    gcloud compute instances delete $CLIENT_NAME $SERVER_NAME --zone=$ZONE --quiet 
+   fi
 
     echo "Finished test-case $TEST_NAME"
 done
