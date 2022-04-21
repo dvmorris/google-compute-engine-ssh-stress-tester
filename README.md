@@ -1,4 +1,4 @@
-# Google Compute Enginer SSH Stress Tester
+# Google Compute Engine SSH Stress Tester
 
 The code in this repository is a framework for testing the capacity for different kinds of Google Compute Engine VMs to accept a high volume of incoming SSH connections simultaneously. The framework currently supports the following variables for testing different kinds of VMs:
 
