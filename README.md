@@ -123,8 +123,14 @@ gcloud compute routers nats create $VPC_NETWORK \
 
 ## Test Scripts
 
-This test script can be executed from a Cloud Shell session where the desired GCP Project is already active
+This test script can be executed from a Cloud Shell session where the desired GCP Project is already active. By default, this will execute the tests in test-cases.csv, and output results to test-cases-results.csv
 
 ```bash
-./run.sh  
+./run.sh
+```
+
+To pass a custom test case file:
+
+```bash
+./run.sh -t single-test-case.csv
 ```

@@ -8,10 +8,8 @@ ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_test -q -N ""
 # https://cloud.google.com/compute/docs/connect/add-ssh-keys#os-login
 gcloud compute os-login ssh-keys add --key-file=$HOME/.ssh/id_rsa_test.pub
 
-# prepare test-results.csv file
-echo "test-name,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime, delete-instances" > test-results.csv
-
-#Get command line args
+# Get command line args -t
+TEST_CASE_FILE=test-cases.csv
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -t) TEST_CASE_FILE="$2"; shift ;;
@@ -20,12 +18,16 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-echo "Test case file : $TEST_CASE_FILE"
+TEST_RESULTS_FILE=$(echo $TEST_CASE_FILE | cut -d. -f1)-results.csv
+# prepare test-results.csv file
+echo "test-name,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime, delete-instances" > $TEST_RESULTS_FILE
+
+echo "Test case file: $TEST_CASE_FILE"
 
 # loop over test-cases.csv
 exec < $TEST_CASE_FILE
 read header
-while IFS="," read -r TEST_NAME VPC_NETWORK NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS DELETE_INSTANCES
+while IFS="," read -r TEST_NAME VPC_NETWORK SUBNET NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS DELETE_INSTANCES
 do
     echo "Starting test-case $TEST_NAME"
 
@@ -37,7 +39,7 @@ do
         $SERVER_NAME \
         --zone=$ZONE \
         --machine-type=$MACHINE_TYPE \
-        --network-interface=network-tier=PREMIUM,subnet=$VPC_NETWORK,no-address \
+        --network-interface=network-tier=PREMIUM,network=$VPC_NETWORK,subnet=$SUBNET,no-address \
         --image=$VM_IMAGE \
         --scopes=https://www.googleapis.com/auth/cloud-platform \
         --tags=$NETWORK_TAG \
@@ -62,7 +64,7 @@ systemctl restart sshd.service' \
         $CLIENT_NAME \
         --zone=$ZONE \
         --machine-type=$MACHINE_TYPE \
-        --network-interface=network-tier=PREMIUM,subnet=$VPC_NETWORK,no-address \
+        --network-interface=network-tier=PREMIUM,network=$VPC_NETWORK,subnet=$SUBNET,no-address \
         --image=$VM_IMAGE \
         --scopes=https://www.googleapis.com/auth/cloud-platform \
         --tags=$NETWORK_TAG \
@@ -89,11 +91,11 @@ systemctl restart sshd.service' \
     gcloud compute scp tester.sh $CLIENT_NAME:tester.sh --zone $ZONE --tunnel-through-iap
 
     # run the tester script and capture the output to test-results.csv
-    gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command "./tester.sh" < /dev/null >> test-results.csv
+    gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command "./tester.sh" < /dev/null >> $TEST_RESULTS_FILE
 
     # delete the client and server VMs for this test
    if [ $DELETE_INSTANCES = "TRUE" ] ; then
-    gcloud compute instances delete $CLIENT_NAME $SERVER_NAME --zone=$ZONE --quiet 
+        gcloud compute instances delete $CLIENT_NAME $SERVER_NAME --zone=$ZONE --quiet 
    fi
 
     echo "Finished test-case $TEST_NAME"
