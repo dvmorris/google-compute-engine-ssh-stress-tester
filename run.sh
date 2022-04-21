@@ -1,12 +1,16 @@
 #! /bin/bash
 
 # generate an SSH keypair locally
-rm -rf $HOME/.ssh/id_rsa_test*
-ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_test -q -N ""
+rm -rf $HOME/.ssh/id_rsa_for_oslogin*
+ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_for_oslogin -q -N ""
+
+# create SSH key for local testing
+rm -rf $HOME/.ssh/id_rsa_for_local*
+ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_for_local -q -N ""
 
 # add the public key to the user profile's OSLogin ssh-keys object
 # https://cloud.google.com/compute/docs/connect/add-ssh-keys#os-login
-gcloud compute os-login ssh-keys add --key-file=$HOME/.ssh/id_rsa_test.pub
+gcloud compute os-login ssh-keys add --key-file=$HOME/.ssh/id_rsa_for_oslogin.pub
 
 # Get command line args -t
 TEST_CASE_FILE=test-cases.csv
@@ -20,14 +24,14 @@ done
 
 TEST_RESULTS_FILE=$(echo $TEST_CASE_FILE | cut -d. -f1)-results.csv
 # prepare test-results.csv file
-echo "test-name,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime, delete-instances" > $TEST_RESULTS_FILE
+echo "test-name,test-repetition,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,denied-count,reset-count,closed-count,failed-count,load-average-count,log-lines-count,parallel-runtime" > $TEST_RESULTS_FILE
 
 echo "Test case file: $TEST_CASE_FILE"
 
 # loop over test-cases.csv
 exec < $TEST_CASE_FILE
 read header
-while IFS="," read -r TEST_NAME VPC_NETWORK SUBNET NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS DELETE_INSTANCES
+while IFS="," read -r TEST_NAME VPC_NETWORK SUBNET NETWORK_TAG ENABLE_OSLOGIN MACHINE_TYPE ZONE VM_IMAGE SSHD_MAX_STARTUPS PARALLEL_NUM_WORKERS PARALLEL_NUM_ITERATIONS TEST_REPETITIONS DELETE_INSTANCES
 do
     echo "Starting test-case $TEST_NAME"
 
@@ -51,6 +55,9 @@ curl -fs http://metadata/computeMetadata/v1/$1 \
 
 SSHD_MAX_STARTUPS=`getMetadataValue instance/attributes/sshd-max-startups`
 
+# set selinux to permissive
+echo 0 > /sys/fs/selinux/enforce
+
 # install ops agent
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 sudo bash add-google-cloud-ops-agent-repo.sh --also-install
@@ -68,7 +75,7 @@ systemctl restart sshd.service' \
         --image=$VM_IMAGE \
         --scopes=https://www.googleapis.com/auth/cloud-platform \
         --tags=$NETWORK_TAG \
-        --metadata=^@^enable-oslogin=$ENABLE_OSLOGIN@server-name=$SERVER_NAME@parallel-num-iterations=$PARALLEL_NUM_ITERATIONS@parallel-num-workers=$PARALLEL_NUM_WORKERS@sshd-max-startups=$SSHD_MAX_STARTUPS \
+        --metadata=^@^enable-oslogin=$ENABLE_OSLOGIN@server-name=$SERVER_NAME@parallel-num-iterations=$PARALLEL_NUM_ITERATIONS@parallel-num-workers=$PARALLEL_NUM_WORKERS@sshd-max-startups=$SSHD_MAX_STARTUPS@test-repetitions=$TEST_REPETITIONS \
         --no-user-output-enabled
     
     # TODO wait for the client to have SSH access available, but for now, just sleep for 35 seconds, as that should take care of most edge cases
@@ -78,14 +85,16 @@ systemctl restart sshd.service' \
     # copy the SSH key to the client VM
     export CLOUDSDK_PYTHON_SITEPACKAGES=1
     gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
-    gcloud compute scp $HOME/.ssh/id_rsa_test.pub $CLIENT_NAME:.ssh/id_rsa_test.pub --zone $ZONE --tunnel-through-iap
-    gcloud compute scp $HOME/.ssh/id_rsa_test $CLIENT_NAME:.ssh/id_rsa_test --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin.pub $CLIENT_NAME:.ssh/id_rsa_for_oslogin.pub --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin $CLIENT_NAME:.ssh/id_rsa_for_oslogin --zone $ZONE --tunnel-through-iap
 
-    # if OS Login is disabled, create an authorized_keys files on the server VM
-    if [ $ENABLE_OSLOGIN = "FALSE" ] ; then
-        gcloud compute ssh $SERVER_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
-        gcloud compute scp $HOME/.ssh/id_rsa_test.pub $SERVER_NAME:.ssh/authorized_keys --zone $ZONE --tunnel-through-iap
-    fi
+    gcloud compute scp $HOME/.ssh/id_rsa_for_local.pub $CLIENT_NAME:.ssh/id_rsa_for_local.pub --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_local $CLIENT_NAME:.ssh/id_rsa_for_local --zone $ZONE --tunnel-through-iap
+
+    # add the "local" SSH public key to the local authorized_keys file
+    gcloud compute ssh $SERVER_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
+    gcloud compute scp $HOME/.ssh/id_rsa_for_local.pub $SERVER_NAME:.ssh/authorized_keys --zone $ZONE --tunnel-through-iap
+    gcloud compute ssh $SERVER_NAME --zone $ZONE --tunnel-through-iap --command="chmod 600 ~/.ssh/authorized_keys"  < /dev/null
 
     # copy the tester script to the VM
     gcloud compute scp tester.sh $CLIENT_NAME:tester.sh --zone $ZONE --tunnel-through-iap
