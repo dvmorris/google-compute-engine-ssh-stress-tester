@@ -1,0 +1,12 @@
+test-name,vpc-network,network-tag,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations
+1,default,parallel-ssh-test,FALSE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,10:30:100,32,200
+2,default,parallel-ssh-test,FALSE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,32,200
+3,default,parallel-ssh-test,FALSE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000
+4,default,parallel-ssh-test,TRUE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,10:30:100,32,200
+5,default,parallel-ssh-test,TRUE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,32,200
+6,default,parallel-ssh-test,TRUE,n1-standard-1,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000
+7,default,parallel-ssh-test,FALSE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,10:30:100,500,2000
+8,default,parallel-ssh-test,FALSE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,500,2000
+9,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,10:30:100,32,200
+10,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,32,200
+11,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000
