@@ -49,7 +49,7 @@ do
         --image=$VM_IMAGE \
         --scopes=https://www.googleapis.com/auth/cloud-platform \
         --tags=$NETWORK_TAG \
-        --metadata=enable-oslogin=$ENABLE_OSLOGIN,sshd-max-startups=$SSHD_MAX_STARTUPS,startup-script='#! /bin/bash
+        --metadata=^@^enable-oslogin=$ENABLE_OSLOGIN@sshd-max-startups=$SSHD_MAX_STARTUPS@startup-script='#! /bin/bash
 getMetadataValue() {
 curl -fs http://metadata/computeMetadata/v1/$1 \
     -H "Metadata-Flavor: Google"
@@ -60,9 +60,51 @@ SSHD_MAX_STARTUPS=`getMetadataValue instance/attributes/sshd-max-startups`
 # set selinux to permissive
 echo 0 > /sys/fs/selinux/enforce
 
+cat <<EOT >> /etc/security/limits.conf
+*                -       nproc           unlimited
+*                -       memlock         unlimited
+*                -       stack           unlimited
+*                -       nofile          1048576
+*                -       cpu             unlimited
+*                -       rtprio          unlimited
+EOT
+
 # install ops agent
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+cat <<EOT >> /etc/google-cloud-ops-agent/config.yaml
+logging:
+  receivers:
+    syslog:
+      type: files
+      include_paths:
+      - /var/log/messages
+      - /var/log/syslog
+    sshd:
+      type: files
+      include_paths:
+      - /var/log/secure
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: [syslog,sshd]
+metrics:
+  receivers:
+    hostmetrics:
+      type: hostmetrics
+      collection_interval: 60s
+  processors:
+    metrics_filter:
+      type: exclude_metrics
+      metrics_pattern: []
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: [hostmetrics]
+        processors: [metrics_filter]
+EOT
+sudo service google-cloud-ops-agent restart
+
 # set SSHD MaxStartups to $SSHD_MAX_STARTUPS and restart SSHD
 echo -e "\nLogLevel DEBUG3\nMaxStartups ${SSHD_MAX_STARTUPS}" >> /etc/ssh/sshd_config
 systemctl restart sshd.service' \
@@ -77,7 +119,15 @@ systemctl restart sshd.service' \
         --image=$VM_IMAGE \
         --scopes=https://www.googleapis.com/auth/cloud-platform \
         --tags=$NETWORK_TAG \
-        --metadata=^@^enable-oslogin=$ENABLE_OSLOGIN@server-name=$SERVER_NAME@parallel-num-iterations=$PARALLEL_NUM_ITERATIONS@parallel-num-workers=$PARALLEL_NUM_WORKERS@sshd-max-startups=$SSHD_MAX_STARTUPS@test-repetitions=$TEST_REPETITIONS \
+        --metadata=^@^enable-oslogin=$ENABLE_OSLOGIN@server-name=$SERVER_NAME@parallel-num-iterations=$PARALLEL_NUM_ITERATIONS@parallel-num-workers=$PARALLEL_NUM_WORKERS@sshd-max-startups=$SSHD_MAX_STARTUPS@test-repetitions=$TEST_REPETITIONS@startup-script='#! /bin/bash
+cat <<EOT >> /etc/security/limits.conf
+*                -       nproc           unlimited
+*                -       memlock         unlimited
+*                -       stack           unlimited
+*                -       nofile          1048576
+*                -       cpu             unlimited
+*                -       rtprio          unlimited
+EOT' \
         --no-user-output-enabled
     
     # TODO wait for the client to have SSH access available, but for now, just sleep for 35 seconds, as that should take care of most edge cases
