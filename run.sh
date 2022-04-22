@@ -1,5 +1,7 @@
 #! /bin/bash
 
+OSLOGIN_USERNAME=$(gcloud compute os-login describe-profile --format="value(posixAccounts[0].username)")
+
 # generate an SSH keypair locally
 rm -rf $HOME/.ssh/id_rsa_for_oslogin*
 ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa_for_oslogin -q -N ""
@@ -83,24 +85,28 @@ systemctl restart sshd.service' \
     sleep 35
 
     # copy the SSH key to the client VM
+    echo "Copying SSH keys to the client VM"
     export CLOUDSDK_PYTHON_SITEPACKAGES=1
-    gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
-    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin.pub $CLIENT_NAME:.ssh/id_rsa_for_oslogin.pub --zone $ZONE --tunnel-through-iap
-    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin $CLIENT_NAME:.ssh/id_rsa_for_oslogin --zone $ZONE --tunnel-through-iap
+    gcloud compute ssh $OSLOGIN_USERNAME@$CLIENT_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
+    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin.pub $OSLOGIN_USERNAME@$CLIENT_NAME:.ssh/id_rsa_for_oslogin.pub --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_oslogin $OSLOGIN_USERNAME@$CLIENT_NAME:.ssh/id_rsa_for_oslogin --zone $ZONE --tunnel-through-iap
 
-    gcloud compute scp $HOME/.ssh/id_rsa_for_local.pub $CLIENT_NAME:.ssh/id_rsa_for_local.pub --zone $ZONE --tunnel-through-iap
-    gcloud compute scp $HOME/.ssh/id_rsa_for_local $CLIENT_NAME:.ssh/id_rsa_for_local --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_local.pub $OSLOGIN_USERNAME@$CLIENT_NAME:.ssh/id_rsa_for_local.pub --zone $ZONE --tunnel-through-iap
+    gcloud compute scp $HOME/.ssh/id_rsa_for_local $OSLOGIN_USERNAME@$CLIENT_NAME:.ssh/id_rsa_for_local --zone $ZONE --tunnel-through-iap
 
     # add the "local" SSH public key to the local authorized_keys file
-    gcloud compute ssh $SERVER_NAME --zone $ZONE --tunnel-through-iap --command="mkdir -p .ssh && chmod 700 .ssh"  < /dev/null
-    gcloud compute scp $HOME/.ssh/id_rsa_for_local.pub $SERVER_NAME:.ssh/authorized_keys --zone $ZONE --tunnel-through-iap
-    gcloud compute ssh $SERVER_NAME --zone $ZONE --tunnel-through-iap --command="chmod 600 ~/.ssh/authorized_keys"  < /dev/null
+    echo "Copying SSH keys to the server VM"
+    SERVER_SSH_COMMAND="mkdir -p .ssh && chmod 700 .ssh && echo $(cat $HOME/.ssh/id_rsa_for_local.pub) >> .ssh/authorized_keys"
+    gcloud compute ssh $OSLOGIN_USERNAME@$SERVER_NAME --zone $ZONE --tunnel-through-iap --command="$SERVER_SSH_COMMAND"  < /dev/null
+    gcloud compute ssh $OSLOGIN_USERNAME@$SERVER_NAME --zone $ZONE --tunnel-through-iap --command="chmod 600 ~/.ssh/authorized_keys"  < /dev/null
 
     # copy the tester script to the VM
-    gcloud compute scp tester.sh $CLIENT_NAME:tester.sh --zone $ZONE --tunnel-through-iap
+    echo "Copying tester.sh to the client VM"
+    gcloud compute scp tester.sh $OSLOGIN_USERNAME@$CLIENT_NAME:tester.sh --zone $ZONE --tunnel-through-iap
 
     # run the tester script and capture the output to test-results.csv
-    gcloud compute ssh $CLIENT_NAME --zone $ZONE --tunnel-through-iap --command "./tester.sh" < /dev/null >> $TEST_RESULTS_FILE
+    echo "Running the tester.sh script on the client VM"
+    gcloud compute ssh $OSLOGIN_USERNAME@$CLIENT_NAME --zone $ZONE --tunnel-through-iap --command "./tester.sh" < /dev/null >> $TEST_RESULTS_FILE
 
     # delete the client and server VMs for this test
    if [ $DELETE_INSTANCES = "TRUE" ] ; then

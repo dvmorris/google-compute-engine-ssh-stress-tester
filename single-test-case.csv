@@ -1,2 +1,5 @@
 test-name,vpc-network,subnet,network-tag,enable-oslogin,machine-type,zone,vm-image,sshd-max-startups,paralell-num-workers,parallel-num-iterations,test-repetitions,delete-instances
-200,default,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000,3,FALSE
+centos-7-image-oslogin-off,default,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000,2,FALSE
+tgs-image-oslogin-off,default,default,parallel-ssh-test,TRUE,n1-standard-16,us-central1-a,projects/tgs-hpc-sandbox-g5h3/global/images/tgs-centos-7-compute-gpu-100-lustre-2-12-7-v20220401-151404,1024,250,2000,2,FALSE
+centos-7-image-oslogin-off,default,default,parallel-ssh-test,FALSE,n1-standard-16,us-central1-a,projects/centos-cloud/global/images/centos-7-v20220406,1024,250,2000,2,FALSE
+tgs-image-oslogin-off,default,default,parallel-ssh-test,FALSE,n1-standard-16,us-central1-a,projects/tgs-hpc-sandbox-g5h3/global/images/tgs-centos-7-compute-gpu-100-lustre-2-12-7-v20220401-151404,1024,250,2000,2,FALSE

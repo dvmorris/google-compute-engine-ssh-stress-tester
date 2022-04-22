@@ -45,6 +45,9 @@ do
     # output test results
     echo $OUTPUT_DATA
 
+    # sleep for a bit to reset the GCE Metadata Server OS Login rate limit counter
+    sleep 75
+
     # run the tests with the local SSH key
     { time parallel -kj${PARALLEL_NUM_WORKERS} --tag "ssh -o \"StrictHostKeyChecking no\" -i ~/.ssh/id_rsa_for_local ${SERVER_NAME} uptime" ::: $(seq 00 $PARALLEL_NUM_ITERATIONS) > $TEST_NAME.log 2>&1 ; } 2> time.txt
 
@@ -60,4 +63,7 @@ do
 
     # output test results
     echo $OUTPUT_DATA
+
+    # sleep for a bit to reset the GCE Metadata Server OS Login rate limit counter
+    sleep 75
 done
