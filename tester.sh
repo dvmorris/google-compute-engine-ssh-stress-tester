@@ -30,17 +30,17 @@ for i in $(seq 00 $TEST_REPETITIONS)
 do
     # run the tests with the oslogin SSH key
     # ssh -o "StrictHostKeyChecking no" -vvv -i ~/.ssh/id_rsa_for_oslogin ${SERVER_NAME} uptime
-    { time parallel -kj${PARALLEL_NUM_WORKERS} --tag "ssh -o \"StrictHostKeyChecking no\" -i ~/.ssh/id_rsa_for_oslogin ${SERVER_NAME} uptime" ::: $(seq 00 $PARALLEL_NUM_ITERATIONS) > $TEST_NAME-oslogin-repetition-$i.log 2>&1 ; } 2> time.txt
+    { time parallel -kj${PARALLEL_NUM_WORKERS} --tag "ssh -o \"StrictHostKeyChecking no\" -i ~/.ssh/id_rsa_for_oslogin ${SERVER_NAME} uptime" ::: $(seq 00 $PARALLEL_NUM_ITERATIONS) > $TEST_NAME-oslogin-repetition-$i.log 2>&1 ; } 2> $TEST_NAME-oslogin-repetition-$i.time.txt
 
     # gather test results
     OUTPUT_DATA="${TEST_NAME},oslogin-repetition-${i},${ENABLE_OSLOGIN},${MACHINE_TYPE},${ZONE},${VM_IMAGE},${SSHD_MAX_STARTUPS},${PARALLEL_NUM_WORKERS},${PARALLEL_NUM_ITERATIONS}"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep denied *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep  reset *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep closed *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep failed *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep 'load average:' *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(cat *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep real time.txt)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep denied $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep  reset $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep closed $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep failed $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep 'load average:' $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(cat $TEST_NAME-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep real $TEST_NAME-oslogin-repetition-$i.time.txt)"
 
     # output test results
     echo $OUTPUT_DATA
@@ -49,17 +49,17 @@ do
     sleep 75
 
     # run the tests with the local SSH key
-    { time parallel -kj${PARALLEL_NUM_WORKERS} --tag "ssh -o \"StrictHostKeyChecking no\" -i ~/.ssh/id_rsa_for_local ${SERVER_NAME} uptime" ::: $(seq 00 $PARALLEL_NUM_ITERATIONS) > $TEST_NAME-non-oslogin-repetition-$i.log 2>&1 ; } 2> time.txt
+    { time parallel -kj${PARALLEL_NUM_WORKERS} --tag "ssh -o \"StrictHostKeyChecking no\" -i ~/.ssh/id_rsa_for_local ${SERVER_NAME} uptime" ::: $(seq 00 $PARALLEL_NUM_ITERATIONS) > $TEST_NAME-non-oslogin-repetition-$i.log 2>&1 ; } 2> $TEST_NAME-non-oslogin-repetition-$i.time.txt
 
     # gather test results
     OUTPUT_DATA="${TEST_NAME},non-oslogin-repetition-${i},${ENABLE_OSLOGIN},${MACHINE_TYPE},${ZONE},${VM_IMAGE},${SSHD_MAX_STARTUPS},${PARALLEL_NUM_WORKERS},${PARALLEL_NUM_ITERATIONS}"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep denied *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep  reset *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep closed *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep failed *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep 'load average:' *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(cat *.log | wc -l)"
-    OUTPUT_DATA="${OUTPUT_DATA},$(grep real time.txt)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep denied $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep  reset $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep closed $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep failed $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep 'load average:' $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(cat $TEST_NAME-non-oslogin-repetition-$i.log | wc -l)"
+    OUTPUT_DATA="${OUTPUT_DATA},$(grep real $TEST_NAME-non-oslogin-repetition-$i.time.txt)"
 
     # output test results
     echo $OUTPUT_DATA
